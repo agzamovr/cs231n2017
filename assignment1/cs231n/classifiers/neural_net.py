@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import numpy as np
-import matplotlib.pyplot as plt
 from past.builtins import xrange
 
 
@@ -71,13 +70,14 @@ class TwoLayerNet(object):
         N, D = X.shape
 
         # Compute the forward pass
-        scores = None
         #############################################################################
         # TODO: Perform the forward pass, computing the class scores for the input. #
         # Store the result in the scores variable, which should be an array of      #
         # shape (N, C).                                                             #
         #############################################################################
-        pass
+        hidden1 = X.dot(W1) + b1
+        a = np.maximum(0, hidden1)  # ReLU
+        scores = a.dot(W2) + b2
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -94,7 +94,13 @@ class TwoLayerNet(object):
         # in the variable loss, which should be a scalar. Use the Softmax           #
         # classifier loss.                                                          #
         #############################################################################
-        pass
+        scores_shifted = scores - np.max(scores, axis=1, keepdims=True)
+        scores_exp = np.exp(scores_shifted)
+        total_scores = np.sum(scores_exp, axis=1)
+        loss = np.sum(np.log(total_scores) - scores_shifted[range(N), y])
+        loss /= N
+        loss += reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -106,7 +112,12 @@ class TwoLayerNet(object):
         # and biases. Store the results in the grads dictionary. For example,       #
         # grads['W1'] should store the gradient on W1, and be a matrix of same size #
         #############################################################################
-        pass
+        total_scores = np.sum(scores_exp, axis=1, keepdims=True)
+        p = scores_exp / total_scores
+        ind = np.zeros_like(p)
+        ind[np.arange(N), y] = 1
+        grad_W1 = scores.T.dot(p - ind)
+        grads['W1'] = grad_W1
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
