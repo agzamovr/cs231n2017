@@ -75,9 +75,9 @@ class TwoLayerNet(object):
         # Store the result in the scores variable, which should be an array of      #
         # shape (N, C).                                                             #
         #############################################################################
-        hidden1 = X.dot(W1) + b1
-        a = np.maximum(0, hidden1)  # ReLU
-        scores = a.dot(W2) + b2
+        hidden_layer = X.dot(W1) + b1
+        relu = np.maximum(0, hidden_layer)  # ReLU
+        scores = relu.dot(W2) + b2
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -87,7 +87,6 @@ class TwoLayerNet(object):
             return scores
 
         # Compute the loss
-        loss = None
         #############################################################################
         # TODO: Finish the forward pass, and compute the loss. This should include  #
         # both the data loss and L2 regularization for W1 and W2. Store the result  #
@@ -95,9 +94,10 @@ class TwoLayerNet(object):
         # classifier loss.                                                          #
         #############################################################################
         scores_shifted = scores - np.max(scores, axis=1, keepdims=True)
-        scores_exp = np.exp(scores_shifted)
-        total_scores = np.sum(scores_exp, axis=1)
-        loss = np.sum(np.log(total_scores) - scores_shifted[range(N), y])
+        exp_scores = np.exp(scores_shifted)
+        probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)  # [N x C]
+        correct_logprobs = -np.log(probs[range(N), y])
+        loss = np.sum(correct_logprobs)
         loss /= N
         loss += reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
 
@@ -112,12 +112,28 @@ class TwoLayerNet(object):
         # and biases. Store the results in the grads dictionary. For example,       #
         # grads['W1'] should store the gradient on W1, and be a matrix of same size #
         #############################################################################
-        total_scores = np.sum(scores_exp, axis=1, keepdims=True)
-        p = scores_exp / total_scores
-        ind = np.zeros_like(p)
-        ind[np.arange(N), y] = 1
-        grad_W1 = scores.T.dot(p - ind)
-        grads['W1'] = grad_W1
+        total_scores = np.sum(exp_scores, axis=1, keepdims=True)
+        p = exp_scores / total_scores
+
+        dscores = p
+        dscores[range(N), y] -= 1
+        dscores /= N
+
+        # W2 and b2
+        grads['W2'] = np.dot(relu.T, dscores)
+        grads['b2'] = np.sum(dscores, axis=0, keepdims=True)
+        # next backprop into hidden layer
+        dhidden = np.dot(dscores, W2.T)
+        # backprop the ReLU non-linearity
+        dhidden[relu <= 0] = 0
+        # finally into W,b
+        grads['W1'] = X.T.dot(dhidden)
+        grads['b1'] = np.sum(dhidden, axis=0, keepdims=True)
+
+        # add regularization gradient contribution
+        grads['W2'] += 2 * reg * W2
+        grads['W1'] += 2 * reg * W1
+
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
