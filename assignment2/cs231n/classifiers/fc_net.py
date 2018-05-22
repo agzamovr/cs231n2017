@@ -174,7 +174,11 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        pass
+        for i in range(self.num_layers):
+            in_dim = hidden_dims[i - 1] if i > 0 else input_dim
+            out_dim = hidden_dims[i] if i < len(hidden_dims) else num_classes
+            self.params['W' + str(i + 1)] = weight_scale * np.random.randn(in_dim, out_dim)
+            self.params['b' + str(i + 1)] = np.zeros(out_dim)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -231,7 +235,14 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
-        pass
+        out = X
+        for i in range(self.num_layers):
+            W = self.params['W' + str(i + 1)]
+            b = self.params['b' + str(i + 1)]
+            if i < self.num_layers - 1:
+                out, cache_relu = affine_relu_forward(out, W, b)
+            else:
+                scores, cache_out = affine_forward(out, W, b)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
