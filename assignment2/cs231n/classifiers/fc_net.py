@@ -80,9 +80,8 @@ class TwoLayerNet(object):
         # TODO: Implement the forward pass for the two-layer net, computing the    #
         # class scores for X and storing them in the scores variable.              #
         ############################################################################
-        out, _ = affine_forward(X, W1, b1)
-        relu, _ = relu_forward(out)
-        scores, _ = affine_forward(relu, W2, b2)
+        relu, cache_relu = affine_relu_forward(X, W1, b1)
+        scores, cache_out = affine_forward(relu, W2, b2)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -104,15 +103,8 @@ class TwoLayerNet(object):
         ############################################################################
         loss, dscores = softmax_loss(scores, y)
         loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
-        grads['W2'] = np.dot(relu.T, dscores)
-        grads['b2'] = np.sum(dscores, axis=0)
-        # next backprop into hidden layer
-        dhidden = np.dot(dscores, W2.T)
-        # backprop the ReLU non-linearity
-        dhidden[relu <= 0] = 0
-        # finally into W,b
-        grads['W1'] = X.reshape(X.shape[0], -1).T.dot(dhidden)  # affine_forward(X.T, dhidden, 0)
-        grads['b1'] = np.sum(dhidden, axis=0)
+        dhidden, grads['W2'], grads['b2'] = affine_backward(dscores, cache_out)
+        _, grads['W1'], grads['b1'] = affine_relu_backward(dhidden, cache_relu)
 
         # add regularization gradient contribution
         grads['W2'] += self.reg * W2
