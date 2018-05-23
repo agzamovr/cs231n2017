@@ -155,6 +155,7 @@ class FullyConnectedNet(object):
           will make the dropout layers deteriminstic so we can gradient check the
           model.
         """
+        self.cache = {}
         self.use_batchnorm = use_batchnorm
         self.use_dropout = dropout > 0
         self.reg = reg
@@ -237,12 +238,13 @@ class FullyConnectedNet(object):
         ############################################################################
         out = X
         for i in range(self.num_layers):
-            W = self.params['W' + str(i + 1)]
-            b = self.params['b' + str(i + 1)]
+            param_id = str(i + 1)
+            W = self.params['W' + param_id]
+            b = self.params['b' + param_id]
             if i < self.num_layers - 1:
-                out, cache_relu = affine_relu_forward(out, W, b)
+                out, self.cache[param_id] = affine_relu_forward(out, W, b)
             else:
-                scores, cache_out = affine_forward(out, W, b)
+                scores, self.cache['out'] = affine_forward(out, W, b)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -265,7 +267,23 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+        loss, dscores = softmax_loss(scores, y)
+        reg_term = 0
+        for i in range(self.num_layers):
+            W = self.params['W' + str(i + 1)]
+            reg_term += np.sum(W * W)
+        loss += 0.5 * self.reg * reg_term
+        dhidden = None
+        for i in reversed(range(self.num_layers)):
+            param_id = str(i + 1)
+            w_param_id = 'W' + param_id
+            b_param_id = 'b' + param_id
+            W = self.params[w_param_id]
+            if i < self.num_layers - 1:
+                dhidden, grads[w_param_id], grads[b_param_id] = affine_relu_backward(dhidden, self.cache[param_id])
+            else:
+                dhidden, grads[w_param_id], grads[b_param_id] = affine_backward(dscores, self.cache['out'])
+            grads[w_param_id] += self.reg * W
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
