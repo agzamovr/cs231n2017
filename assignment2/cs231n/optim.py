@@ -75,7 +75,6 @@ def sgd_momentum(w, dw, config=None):
     return next_w, config
 
 
-
 def rmsprop(x, dx, config=None):
     """
     Uses the RMSProp update rule, which uses a moving average of squared
@@ -94,13 +93,18 @@ def rmsprop(x, dx, config=None):
     config.setdefault('epsilon', 1e-8)
     config.setdefault('cache', np.zeros_like(x))
 
-    next_x = None
+    learning_rate = config['learning_rate']
+    decay_rate = config['decay_rate']
+    cache = config['cache']
+    eps = config['epsilon']
+
     ###########################################################################
     # TODO: Implement the RMSprop update formula, storing the next value of x #
     # in the next_x variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    pass
+    cache = decay_rate * cache + (1 - decay_rate) * dx ** 2
+    next_x = x - learning_rate * dx / (np.sqrt(cache) + eps)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
