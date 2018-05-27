@@ -1,9 +1,9 @@
-from builtins import range
 from builtins import object
-import numpy as np
+from builtins import range
 
-from cs231n.layers import *
+import numpy as np
 from cs231n.layer_utils import *
+from cs231n.layers import *
 
 
 class TwoLayerNet(object):
@@ -178,8 +178,12 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers):
             in_dim = hidden_dims[i - 1] if i > 0 else input_dim
             out_dim = hidden_dims[i] if i < len(hidden_dims) else num_classes
-            self.params['W' + str(i + 1)] = weight_scale * np.random.randn(in_dim, out_dim)
-            self.params['b' + str(i + 1)] = np.zeros(out_dim)
+            param_id = str(i + 1)
+            self.params['W' + param_id] = weight_scale * np.random.randn(in_dim, out_dim)
+            self.params['b' + param_id] = np.zeros(out_dim)
+            if self.use_batchnorm and i < len(hidden_dims):
+                self.params['gamma' + param_id] = np.ones(out_dim)
+                self.params['beta' + param_id] = np.zeros(out_dim)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -242,7 +246,13 @@ class FullyConnectedNet(object):
             W = self.params['W' + param_id]
             b = self.params['b' + param_id]
             if i < self.num_layers - 1:
-                out, self.cache[param_id] = affine_relu_forward(out, W, b)
+                if self.use_batchnorm:
+                    gamma = self.params['gamma' + param_id]
+                    beta = self.params['beta' + param_id]
+                    out, self.cache[param_id] = affine_batch_norm_relu_forward(out, W, b, gamma, beta,
+                                                                               self.bn_params[i])
+                else:
+                    out, self.cache[param_id] = affine_relu_forward(out, W, b)
             else:
                 scores, self.cache['out'] = affine_forward(out, W, b)
         ############################################################################
@@ -280,7 +290,13 @@ class FullyConnectedNet(object):
             b_param_id = 'b' + param_id
             W = self.params[w_param_id]
             if i < self.num_layers - 1:
-                dhidden, grads[w_param_id], grads[b_param_id] = affine_relu_backward(dhidden, self.cache[param_id])
+                if self.use_batchnorm:
+                    gamma_param_id = 'gamma' + param_id
+                    beta_param_id = 'beta' + param_id
+                    dhidden, grads[w_param_id], grads[b_param_id], grads[gamma_param_id], grads[beta_param_id] = \
+                        affine_batch_norm_relu_backward(dhidden, self.cache[param_id])
+                else:
+                    dhidden, grads[w_param_id], grads[b_param_id] = affine_relu_backward(dhidden, self.cache[param_id])
             else:
                 dhidden, grads[w_param_id], grads[b_param_id] = affine_backward(dscores, self.cache['out'])
             grads[w_param_id] += self.reg * W
@@ -289,3 +305,22 @@ class FullyConnectedNet(object):
         ############################################################################
 
         return loss, grads
+
+
+def affine_batch_norm_relu_forward(x, W, b, gamma, beta, bn_param):
+    out, fc_cache = affine_forward(x, W, b)
+    out, batch_cache = batchnorm_forward(out, gamma, beta, bn_param)
+    out, relu_cache = relu_forward(out)
+    cache = (fc_cache, batch_cache, relu_cache)
+    return out, cache
+
+
+def affine_batch_norm_relu_backward(dout, cache):
+    """
+    Backward pass for the affine-relu convenience layer
+    """
+    fc_cache, batch_cache, relu_cache = cache
+    da = relu_backward(dout, relu_cache)
+    dx, dgamma, dbeta = batchnorm_backward(da, batch_cache)
+    dx, dw, db = affine_backward(dx, fc_cache)
+    return dx, dw, db, dgamma, dbeta
