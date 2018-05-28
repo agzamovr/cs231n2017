@@ -253,6 +253,8 @@ class FullyConnectedNet(object):
                                                                                self.bn_params[i])
                 else:
                     out, self.cache[param_id] = affine_relu_forward(out, W, b)
+                if self.use_dropout:
+                    out, self.cache['do' + param_id] = dropout_forward(out, self.dropout_param)
             else:
                 scores, self.cache['out'] = affine_forward(out, W, b)
         ############################################################################
@@ -290,6 +292,9 @@ class FullyConnectedNet(object):
             b_param_id = 'b' + param_id
             W = self.params[w_param_id]
             if i < self.num_layers - 1:
+                if self.use_dropout:
+                    dropout_cache = self.cache['do' + param_id]
+                    dhidden = dropout_backward(dhidden, dropout_cache)
                 if self.use_batchnorm:
                     gamma_param_id = 'gamma' + param_id
                     beta_param_id = 'beta' + param_id
@@ -297,6 +302,7 @@ class FullyConnectedNet(object):
                         affine_batch_norm_relu_backward(dhidden, self.cache[param_id])
                 else:
                     dhidden, grads[w_param_id], grads[b_param_id] = affine_relu_backward(dhidden, self.cache[param_id])
+
             else:
                 dhidden, grads[w_param_id], grads[b_param_id] = affine_backward(dscores, self.cache['out'])
             grads[w_param_id] += self.reg * W
