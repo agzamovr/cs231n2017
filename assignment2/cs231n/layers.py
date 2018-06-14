@@ -428,14 +428,16 @@ def conv_backward_naive(dout, cache):
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
     for i in range(output_height):
+        hpos = i * stride
         for j in range(output_width):
+            wpos = j * stride
             dout_slice = dout[:, :, i, j]
 
             dx_slice_flattened = dout_slice.dot(w_flat)
             dx_slice = dx_slice_flattened.reshape((N, C, HH, WW))
-            dx[:, :, i * stride: i * stride + HH, j * stride: j * stride + WW] += dx_slice
+            dx[:, :, hpos: hpos + HH, wpos: wpos + WW] += dx_slice
 
-            x_slice = x[:, :, i * stride: i * stride + HH, j * stride: j * stride + WW]
+            x_slice = x[:, :, hpos: hpos + HH, wpos: wpos + WW]
             x_slice_flattened = x_slice.reshape((N, -1))
 
             dw += dout_slice.T.dot(x_slice_flattened).reshape(dw.shape)
