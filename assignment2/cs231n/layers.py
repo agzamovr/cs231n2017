@@ -415,11 +415,34 @@ def conv_backward_naive(dout, cache):
     - dw: Gradient with respect to w
     - db: Gradient with respect to b
     """
-    dx, dw, db = None, None, None
+    x, w, b, conv_param = cache
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    F, C, HH, WW = w.shape
+    N, _, output_height, output_width = dout.shape
+
+    dx, dw, db = np.zeros(x.shape), np.zeros(w.shape), np.zeros(b.shape)
+
+    w_flat = w.reshape((F, -1))
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    for i in range(output_height):
+        for j in range(output_width):
+            dout_slice = dout[:, :, i, j]
+
+            dx_slice_flattened = dout_slice.dot(w_flat)
+            dx_slice = dx_slice_flattened.reshape((N, C, HH, WW))
+            dx[:, :, i * stride: i * stride + HH, j * stride: j * stride + WW] += dx_slice
+
+            x_slice = x[:, :, i * stride: i * stride + HH, j * stride: j * stride + WW]
+            x_slice_flattened = x_slice.reshape((N, -1))
+
+            dw += dout_slice.T.dot(x_slice_flattened).reshape(dw.shape)
+            db += dout_slice.sum(axis=0)
+
+        # crop padding from dx
+    dx = dx[:, :, pad:-pad, pad:-pad]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
